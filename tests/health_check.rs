@@ -1,5 +1,7 @@
 use std::net::TcpListener;
 
+use newsletter_api::startup::run;
+
 #[tokio::test]
 async fn health_check_succeed() {
     // Arrange
@@ -72,7 +74,7 @@ fn spawn_app() -> String {
     let port = listener.local_addr().unwrap().port();
 
     println!("port {port}");
-    let server = newsletter_api::run(listener).expect("Failed to spin the sever");
+    let server = run(listener).expect("Failed to spin the sever");
     let _ = tokio::spawn(server);
     format!("http://127.0.0.1:{}", port)
 }
