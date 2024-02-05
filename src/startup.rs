@@ -1,6 +1,5 @@
 use std::net::TcpListener;
 
-
 use actix_web::{dev::Server, web, App, HttpServer};
 
 pub fn run(listener: TcpListener) -> Result<Server, std::io::Error> {
