@@ -1,6 +1,10 @@
 use std::net::TcpListener;
 
-use newsletter_api::startup::run;
+use newsletter_api::{
+    configuration::{self, DatabaseSettings},
+    startup::run,
+};
+use sqlx::{Connection, PgConnection};
 
 #[tokio::test]
 async fn health_check_succeed() {
@@ -23,6 +27,12 @@ async fn health_check_succeed() {
 #[tokio::test]
 async fn subscribe_returns_200_ok_for_valid_form_data() {
     let app_address = spawn_app();
+    let configuration = configuration::get_configuration().expect("Failed to load configuration");
+    let connection_string = configuration.database.connection_string();
+    let mut connection = PgConnection::connect(&connection_string)
+        .await
+        .expect("Failed to connect to database");
+    
     let client = reqwest::Client::new();
     let body = "name=jk&email=newsletter-api%40gmail.com";
 
@@ -35,8 +45,15 @@ async fn subscribe_returns_200_ok_for_valid_form_data() {
         .await
         .expect("Failed to execute request");
 
+    let saved = sqlx::query!("SELECT email, name FROM subscriptions",)
+    .fetch_one(&mut connection)
+    .await
+    .expect("Failed to fetch saved subscription");
+
     // Assert
     assert!(response.status().is_success());
+    assert_eq!(saved.name, "jk");
+    assert_eq!(saved.email, "newsletter-api@gmail.com")
 }
 
 #[tokio::test]
