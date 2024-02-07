@@ -4,7 +4,7 @@ use newsletter_api::{
     configuration::{self, get_configuration},
     startup::run,
 };
-use sqlx::{Connection, PgConnection};
+use sqlx::{Connection, PgConnection, PgPool};
 
 #[tokio::test]
 async fn health_check_succeed() {
@@ -91,7 +91,7 @@ async fn spawn_app() -> String {
     let port = listener.local_addr().unwrap().port();
     println!("port {port}");
     let settings = get_configuration().expect("Failed to get settings");
-    let connection = PgConnection::connect(&settings.database.connection_string())
+    let connection = PgPool::connect(&settings.database.connection_string())
         .await
         .expect("Failed to connect to database");
 
