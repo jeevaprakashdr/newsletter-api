@@ -13,7 +13,7 @@ if ![ -x "$(command -v sqlx)"]; then
 fi
 
 IMAGE_NAME=newsletter-dev
-DB_USER="${POSTGRES_USER:=newsletter-dev-user}"
+DB_USER="${POSTGRES_USER:=postgres}"
 DB_PASSWORD="${POSTGRES_PASSWORD:=password}"
 DB_NAME="${POSTGRES_DB:=newsletter}"
 DB_PORT="${POSTGRES_PORT:=5432}"
