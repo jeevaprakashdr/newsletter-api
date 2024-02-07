@@ -1,7 +1,7 @@
 use std::net::TcpListener;
 
 use newsletter_api::{
-    configuration::{self, DatabaseSettings},
+    configuration::{self, get_configuration},
     startup::run,
 };
 use sqlx::{Connection, PgConnection};
@@ -9,7 +9,7 @@ use sqlx::{Connection, PgConnection};
 #[tokio::test]
 async fn health_check_succeed() {
     // Arrange
-    let app_address = spawn_app();
+    let app_address = spawn_app().await;
     let client = reqwest::Client::new();
 
     // Act
@@ -26,13 +26,13 @@ async fn health_check_succeed() {
 
 #[tokio::test]
 async fn subscribe_returns_200_ok_for_valid_form_data() {
-    let app_address = spawn_app();
+    let app_address = spawn_app().await;
     let configuration = configuration::get_configuration().expect("Failed to load configuration");
     let connection_string = configuration.database.connection_string();
     let mut connection = PgConnection::connect(&connection_string)
         .await
         .expect("Failed to connect to database");
-    
+
     let client = reqwest::Client::new();
     let body = "name=jk&email=newsletter-api%40gmail.com";
 
@@ -46,9 +46,9 @@ async fn subscribe_returns_200_ok_for_valid_form_data() {
         .expect("Failed to execute request");
 
     let saved = sqlx::query!("SELECT email, name FROM subscriptions",)
-    .fetch_one(&mut connection)
-    .await
-    .expect("Failed to fetch saved subscription");
+        .fetch_one(&mut connection)
+        .await
+        .expect("Failed to fetch saved subscription");
 
     // Assert
     assert!(response.status().is_success());
@@ -58,7 +58,7 @@ async fn subscribe_returns_200_ok_for_valid_form_data() {
 
 #[tokio::test]
 async fn subscribe_returns_400_when_passed_with_invalid_form_data() {
-    let app_address = spawn_app();
+    let app_address = spawn_app().await;
     let client = reqwest::Client::new();
     let invalid_data = vec![
         ("name=jk", "missing email address"),
@@ -86,12 +86,16 @@ async fn subscribe_returns_400_when_passed_with_invalid_form_data() {
     }
 }
 
-fn spawn_app() -> String {
+async fn spawn_app() -> String {
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind to server");
     let port = listener.local_addr().unwrap().port();
-
     println!("port {port}");
-    let server = run(listener).expect("Failed to spin the sever");
+    let settings = get_configuration().expect("Failed to get settings");
+    let connection = PgConnection::connect(&settings.database.connection_string())
+        .await
+        .expect("Failed to connect to database");
+
+    let server = run(listener, connection).expect("Failed to spin the sever");
     let _ = tokio::spawn(server);
     format!("http://127.0.0.1:{}", port)
 }
