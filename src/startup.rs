@@ -13,6 +13,6 @@ pub fn run(listener: TcpListener, connection: PgConnection) -> Result<Server, st
     })
     .listen(listener)?
     .run();
-
+    
     Ok(server)
 }
