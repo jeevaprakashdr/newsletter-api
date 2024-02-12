@@ -1,5 +1,6 @@
 use std::net::TcpListener;
 
+use env_logger::Env;
 use newsletter_api::configuration;
 use newsletter_api::startup::run;
 use sqlx::PgPool;
@@ -12,5 +13,7 @@ async fn main() -> Result<(), std::io::Error> {
     let connection = PgPool::connect(&settings.database.connection_string())
         .await
         .expect("failed to connect to database");
+
+    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
     run(listener, connection)?.await
 }
