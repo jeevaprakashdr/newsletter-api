@@ -1,8 +1,9 @@
 use std::net::TcpListener;
+use once_cell::sync::Lazy;
 
 use newsletter_api::{
     configuration::{get_configuration, DatabaseSettings},
-    startup::run,
+    startup::run, telemetry::{get_tracing_subscriber, init_tracing_subscriber},
 };
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
@@ -33,7 +34,7 @@ async fn subscribe_returns_200_ok_for_valid_form_data() {
 
     // Act
     let response = client
-        .get(format!("{}/subscriptions", app.address))
+        .post(format!("{}/subscriptions", app.address))
         .header("Content-Type", "application/x-www-form-urlencoded")
         .body(body)
         .send()
@@ -64,7 +65,7 @@ async fn subscribe_returns_400_when_passed_with_invalid_form_data() {
     // Act
     for (body, error_message) in invalid_data {
         let response = client
-            .get(format!("{}/subscriptions", app.address))
+            .post(format!("{}/subscriptions", app.address))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .body(body)
             .send()
@@ -81,12 +82,19 @@ async fn subscribe_returns_400_when_passed_with_invalid_form_data() {
     }
 }
 
+static TRACING: Lazy<()> = Lazy::new(||{
+    let subscriber = get_tracing_subscriber("test".into(), "debug".into());
+    init_tracing_subscriber(subscriber);
+});
+
 struct TestApp {
     address: String,
     db_pool: PgPool
 }
 
 async fn spawn_app() -> TestApp {
+    Lazy::force(&TRACING);
+
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind to server");
     let port = listener.local_addr().unwrap().port();
     println!("port {port}");
@@ -119,7 +127,7 @@ async fn configure_database(database: &DatabaseSettings) -> sqlx::Pool<sqlx::Pos
 
     let connection_pool = PgPool::connect(&database.connection_string())
         .await
-        .expect("Failed to connect to the databse");
+        .expect("Failed to connect to the database");
 
     sqlx::migrate!("./migrations")
         .run(&connection_pool)
