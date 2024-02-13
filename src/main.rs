@@ -3,6 +3,7 @@ use std::net::TcpListener;
 use newsletter_api::startup::run;
 use newsletter_api::telemetry::init_tracing_subscriber;
 use newsletter_api::{configuration, telemetry::get_tracing_subscriber};
+use secrecy::ExposeSecret;
 use sqlx::PgPool;
 
 #[tokio::main]
@@ -17,7 +18,7 @@ async fn main() -> Result<(), std::io::Error> {
     let settings = configuration::get_configuration().expect("Failed to read the configuration");
     let address = format!("127.0.0.1:{}", settings.application_port);
     let listener = TcpListener::bind(address)?;
-    let connection = PgPool::connect(&settings.database.connection_string())
+    let connection = PgPool::connect(&settings.database.connection_string().expose_secret())
         .await
         .expect("failed to connect to database");
 
