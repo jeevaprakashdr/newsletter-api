@@ -1,9 +1,13 @@
-use std::net::TcpListener;
 use once_cell::sync::Lazy;
+use std::{
+    io::{sink, Sink, Stdout},
+    net::TcpListener,
+};
 
 use newsletter_api::{
     configuration::{get_configuration, DatabaseSettings},
-    startup::run, telemetry::{get_tracing_subscriber, init_tracing_subscriber},
+    startup::run,
+    telemetry::{get_tracing_subscriber, init_tracing_subscriber},
 };
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
@@ -82,14 +86,22 @@ async fn subscribe_returns_400_when_passed_with_invalid_form_data() {
     }
 }
 
-static TRACING: Lazy<()> = Lazy::new(||{
-    let subscriber = get_tracing_subscriber("test".into(), "debug".into());
-    init_tracing_subscriber(subscriber);
+static TRACING: Lazy<()> = Lazy::new(|| {
+    let default_filter = "info".to_string();
+    let subscriber_name = "test".to_string();
+
+    if std::env::var("TEST_LOG").is_ok() {
+        let subscriber = get_tracing_subscriber(subscriber_name, default_filter, std::io::stdout);
+        init_tracing_subscriber(subscriber);
+    } else {
+        let subscriber = get_tracing_subscriber(subscriber_name, default_filter, sink);
+        init_tracing_subscriber(subscriber);
+    }
 });
 
 struct TestApp {
     address: String,
-    db_pool: PgPool
+    db_pool: PgPool,
 }
 
 async fn spawn_app() -> TestApp {
@@ -105,10 +117,10 @@ async fn spawn_app() -> TestApp {
 
     let server = run(listener, connection_pool.clone()).expect("Failed to spin the sever");
     let _ = tokio::spawn(server);
-    
-    TestApp{
+
+    TestApp {
         address: format!("http://127.0.0.1:{}", port),
-        db_pool: connection_pool
+        db_pool: connection_pool,
     }
 }
 

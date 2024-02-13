@@ -7,7 +7,11 @@ use sqlx::PgPool;
 
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
-    let subscriber = get_tracing_subscriber("newsletter".to_string(), "info".to_string());
+    let subscriber = get_tracing_subscriber(
+        "newsletter".to_string(),
+        "info".to_string(),
+        std::io::stdout,
+    );
     init_tracing_subscriber(subscriber);
 
     let settings = configuration::get_configuration().expect("Failed to read the configuration");
