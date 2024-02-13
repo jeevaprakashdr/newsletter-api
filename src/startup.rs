@@ -9,7 +9,7 @@ pub fn run(listener: TcpListener, connection: PgPool) -> Result<Server, std::io:
         App::new()
             .wrap(Logger::default())
             .route("/health_check", web::get().to(crate::routes::health_check))
-            .route("/subscriptions", web::get().to(crate::routes::subscribe))
+            .route("/subscriptions", web::post().to(crate::routes::subscribe))
             .app_data(connection.clone())
     })
     .listen(listener)?
