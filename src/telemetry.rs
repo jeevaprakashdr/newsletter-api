@@ -13,7 +13,7 @@ where
 {
     let env_filter =
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(log_level));
-    let format_layer = BunyanFormattingLayer::new(app_name.into(), sink);
+    let format_layer = BunyanFormattingLayer::new(app_name, sink);
 
     Registry::default()
         .with(env_filter)

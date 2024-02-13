@@ -12,20 +12,18 @@ if ![ -x "$(command -v sqlx)"]; then
     exit 1
 fi
 
-IMAGE_NAME=newsletter-dev
 DB_USER="${POSTGRES_USER:=postgres}"
 DB_PASSWORD="${POSTGRES_PASSWORD:=password}"
 DB_NAME="${POSTGRES_DB:=newsletter}"
-DB_PORT="${POSTGRES_PORT:=5432}"
-DB_HOST="${POSTGRES_HOST:=localhost}" 
+DB_PORT="${POSTGRES_PORT:=5433}"
+DB_HOST="${POSTGRES_HOST:=127.0.0.1}" 
 
-if [ $( docker ps -a | grep $IMAGE_NAME | wc -l ) -eq 0 ]; then
+if [[ -z "${SKIP_DOCKER}" ]]; then
     docker run \
         -e POSTGRES_USER=${DB_USER} \
         -e POSTGRES_PASSWORD=${DB_PASSWORD} \
         -e POSTGRES_DB=${DB_NAME} \
         -p "${DB_PORT}":5432 \
-        --name ${IMAGE_NAME} \
         -d postgres \
         postgres -N 1000
 fi

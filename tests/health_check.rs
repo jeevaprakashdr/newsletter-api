@@ -1,9 +1,6 @@
 use once_cell::sync::Lazy;
 use secrecy::ExposeSecret;
-use std::{
-    io::{sink, Sink, Stdout},
-    net::TcpListener,
-};
+use std::{io::sink, net::TcpListener};
 
 use newsletter_api::{
     configuration::{get_configuration, DatabaseSettings},
