@@ -15,14 +15,14 @@ pub async fn subscribe(
     connection: web::Data<PgPool>,
 ) -> HttpResponse {
     let request_id = Uuid::new_v4();
-    log::info!(
+    tracing::info!(
         "request_id {} - Adding '{}' '{}' as a new subscriber.",
         request_id,
         form_data.email,
         form_data.name
     );
 
-    log::info!(
+    tracing::info!(
         "request_id {} - Saving new subscriber details in the database",
         request_id
     );
@@ -37,11 +37,11 @@ pub async fn subscribe(
     .await
     {
         Ok(_) => {
-            log::info!("New subscriber details are saved");
+            tracing::info!("New subscriber details are saved");
             HttpResponse::Ok().finish()
         }
         Err(e) => {
-            log::error!("failed to execute query: {:?}", e);
+            tracing::error!("failed to execute query: {:?}", e);
             HttpResponse::InternalServerError().finish()
         }
     }
