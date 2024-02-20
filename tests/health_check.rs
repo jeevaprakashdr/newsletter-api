@@ -84,6 +84,36 @@ async fn subscribe_returns_400_when_passed_with_invalid_form_data() {
     }
 }
 
+#[tokio::test]
+async fn subscribe_returns_200_when_fields_are_present_but_empty() {
+    let app = spawn_app().await;
+    let client = reqwest::Client::new();
+    let invalid_data = vec![
+        ("name=jk&email=", "missing email address"),
+        ("name=&email=newsletter-api%40gmail.com", "missing name"),
+        ("name=jk&email=definitely-not-an-email", "invalid email"),
+    ];
+
+    // Act
+    for (body, error_message) in invalid_data {
+        let response = client
+            .post(format!("{}/subscriptions", app.address))
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .body(body)
+            .send()
+            .await
+            .expect("Failed to execute request");
+
+        // Assert
+        assert_eq!(
+            200,
+            response.status().as_u16(),
+            "The API request did not failed with error message: {}",
+            error_message
+        );
+    }
+}
+
 static TRACING: Lazy<()> = Lazy::new(|| {
     let default_filter = "info".to_string();
     let subscriber_name = "test".to_string();
