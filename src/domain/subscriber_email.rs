@@ -4,11 +4,11 @@ use validator::validate_email;
 pub struct SubscriberEmail(String);
 
 impl SubscriberEmail {
-    pub fn parse(email: String) -> Result<SubscriberEmail, String>{
+    pub fn parse(email: String) -> Result<SubscriberEmail, String> {
         if validate_email(&email) {
             return Ok(Self(email));
         }
-        
+
         Err("Invalid email".to_string())
     }
 }
@@ -21,21 +21,28 @@ impl AsRef<str> for SubscriberEmail {
 
 #[cfg(test)]
 mod tests {
-    use claims::{assert_err_eq, assert_ok};
-
     use super::SubscriberEmail;
+    use claims::{assert_err_eq, assert_ok};
+    use fake::{faker::internet::en::SafeEmail, Fake};
 
-    #[test]
-    fn subscriber_email_is_parsed_successfully() {
-        let email = SubscriberEmail::parse("test@example.com".to_string());
+    #[derive(Debug, Clone)]
+    struct ValidEmailFixture(pub String);
 
-        assert_ok!(email);
+    impl quickcheck::Arbitrary for ValidEmailFixture {
+        fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+            let email = SafeEmail().fake_with_rng(g);
+            Self(email)
+        }
     }
 
-    #[test]
-    fn subscriber_email_is_parsing_failed() {
-        let email = SubscriberEmail::parse("not an email at all".to_string());
+    #[quickcheck_macros::quickcheck]
+    fn subscriber_email_is_parsed_successfully(valid_email: ValidEmailFixture) {
+        dbg!(&valid_email);
+        assert_ok!(SubscriberEmail::parse(valid_email.0));
+    }
 
-        assert_err_eq!(email, "Invalid email".to_string());
+    #[quickcheck_macros::quickcheck]
+    fn subscriber_email_is_parsing_failed(email: String) {
+        assert_err_eq!(SubscriberEmail::parse(email), "Invalid email".to_string());
     }
 }
