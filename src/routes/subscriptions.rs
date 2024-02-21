@@ -4,6 +4,7 @@ use chrono::Utc;
 use sqlx::PgPool;
 use uuid::Uuid;
 
+use crate::domain::SubscriberEmail;
 use crate::domain::{NewSubscriber, SubscriberName};
 
 #[derive(serde::Deserialize)]
@@ -26,7 +27,7 @@ pub async fn subscribe(
 ) -> HttpResponse {
     let new_subscriber = NewSubscriber {
         name: SubscriberName::parse(form_data.0.name).unwrap(),
-        email: "".to_owned(),
+        email: SubscriberEmail::parse(form_data.0.email).unwrap()
     };
 
     match create_subscriber(&new_subscriber, &connection).await {
@@ -42,7 +43,7 @@ async fn create_subscriber(
     sqlx::query!(
         r#"INSERT INTO subscriptions(id, email, name, subscribed_at) VALUES($1, $2, $3, $4)"#,
         Uuid::new_v4(),
-        new_subscriber.email,
+        new_subscriber.email.as_ref(),
         new_subscriber.name.as_ref(),
         Utc::now()
     )
