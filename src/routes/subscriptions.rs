@@ -1,5 +1,4 @@
-use actix_web::web;
-use actix_web::HttpResponse;
+use actix_web::{web, HttpResponse};
 use chrono::Utc;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -25,9 +24,9 @@ pub async fn subscribe(
     form_data: web::Form<FormData>,
     connection: web::Data<PgPool>,
 ) -> HttpResponse {
-    let new_subscriber = NewSubscriber {
-        name: SubscriberName::parse(form_data.0.name).unwrap(),
-        email: SubscriberEmail::parse(form_data.0.email).unwrap()
+    let new_subscriber = match form_data.0.try_into() {
+        Ok(data) => data,
+        Err(_) => return HttpResponse::InternalServerError().finish(),
     };
 
     match create_subscriber(&new_subscriber, &connection).await {
@@ -55,4 +54,14 @@ async fn create_subscriber(
     })?;
 
     Ok(())
+}
+
+impl TryFrom<FormData> for NewSubscriber {
+    type Error = String;
+
+    fn try_from(value: FormData) -> Result<Self, Self::Error> {
+        let name = SubscriberName::parse(value.name)?;
+        let email = SubscriberEmail::parse(value.email)?;
+        Ok(Self { name, email })
+    }
 }
