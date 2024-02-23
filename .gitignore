@@ -19,3 +19,4 @@ Cargo.lock
 /target
 .vscode/launch.json
 .vscode
+.DS_Store
