@@ -5,6 +5,7 @@ use newsletter_api::telemetry::init_tracing_subscriber;
 use newsletter_api::{configuration, telemetry::get_tracing_subscriber};
 use secrecy::ExposeSecret;
 use sqlx::PgPool;
+use newsletter_api::email_client::EmailClient;
 
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
@@ -22,5 +23,7 @@ async fn main() -> Result<(), std::io::Error> {
         .await
         .expect("failed to connect to database");
 
-    run(listener, connection)?.await
+    let sender_email = settings.email_client_settings.sender_email().expect("Invalid subscription email sender address");
+    let email_client = EmailClient::new(settings.email_client_settings.base_url, sender_email);
+    run(listener, connection, email_client)?.await
 }

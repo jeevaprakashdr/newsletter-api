@@ -5,3 +5,6 @@ database:
   username: "postgres"
   password: "password"
   database_name: "newsletter"
+email_client_settings:
+  sender: "newsletter_api_subscription_confirmation@gmail.com"
+  base_url: "url"

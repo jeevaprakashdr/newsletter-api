@@ -1,10 +1,24 @@
 use config::ConfigError;
 use secrecy::{ExposeSecret, Secret};
+use crate::domain::SubscriberEmail;
 
 #[derive(serde::Deserialize)]
 pub struct Settings {
     pub database: DatabaseSettings,
     pub application_port: u16,
+    pub email_client_settings: EmailClientSettings
+}
+
+#[derive(serde::Deserialize)]
+pub struct EmailClientSettings {
+    pub sender: String,
+    pub base_url: String
+}
+
+impl EmailClientSettings {
+    pub fn sender_email(&self) -> Result<SubscriberEmail, String> {
+        SubscriberEmail::parse(self.sender.clone())
+    }
 }
 
 #[derive(serde::Deserialize)]
