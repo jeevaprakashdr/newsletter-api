@@ -1,19 +1,19 @@
+use crate::domain::SubscriberEmail;
 use config::ConfigError;
 use secrecy::{ExposeSecret, Secret};
-use crate::domain::SubscriberEmail;
 
 #[derive(serde::Deserialize)]
 pub struct Settings {
     pub database: DatabaseSettings,
     pub application_port: u16,
-    pub email_client_settings: EmailClientSettings
+    pub email_client_settings: EmailClientSettings,
 }
 
 #[derive(serde::Deserialize)]
 pub struct EmailClientSettings {
     pub sender: String,
     pub base_url: String,
-    pub auth_token: Secret<String>
+    pub auth_token: Secret<String>,
 }
 
 impl EmailClientSettings {

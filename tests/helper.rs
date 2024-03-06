@@ -1,5 +1,6 @@
 use std::{io::sink, net::TcpListener};
 
+use newsletter_api::email_client::EmailClient;
 use newsletter_api::{
     configuration::{get_configuration, DatabaseSettings},
     startup::run,
@@ -9,7 +10,6 @@ use once_cell::sync::Lazy;
 use secrecy::ExposeSecret;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
-use newsletter_api::email_client::EmailClient;
 
 pub struct TestApp {
     pub address: String,
@@ -26,9 +26,17 @@ pub async fn spawn_app() -> TestApp {
     let mut settings = get_configuration().expect("Failed to get settings");
     settings.database.database_name = Uuid::new_v4().to_string();
     let connection_pool = configure_database(&settings.database).await;
-    let sender_email = settings.email_client_settings.sender_email().expect("failed to parse the email id");
-    let email_client = EmailClient::new(settings.email_client_settings.base_url, sender_email, settings.email_client_settings.auth_token);
-    let server = run(listener, connection_pool.clone(), email_client).expect("Failed to spin the sever");
+    let sender_email = settings
+        .email_client_settings
+        .sender_email()
+        .expect("failed to parse the email id");
+    let email_client = EmailClient::new(
+        settings.email_client_settings.base_url,
+        sender_email,
+        settings.email_client_settings.auth_token,
+    );
+    let server =
+        run(listener, connection_pool.clone(), email_client).expect("Failed to spin the sever");
     let _ = tokio::spawn(server);
 
     TestApp {

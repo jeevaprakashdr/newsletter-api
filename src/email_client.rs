@@ -1,7 +1,7 @@
+use crate::domain::SubscriberEmail;
 use reqwest::Client;
 use secrecy::{ExposeSecret, Secret};
 use serde::Serialize;
-use crate::domain::SubscriberEmail;
 
 pub struct EmailClient {
     http_client: Client,
@@ -12,15 +12,26 @@ pub struct EmailClient {
 
 impl EmailClient {
     pub fn new(base_url: String, sender: SubscriberEmail, auth_token: Secret<String>) -> Self {
+        let client = Client::builder()
+            .timeout(std::time::Duration::from_secs(10))
+            .build()
+            .unwrap();
+
         Self {
-            http_client: Client::new(),
+            http_client: client,
             base_url,
             sender,
             auth_token,
         }
     }
 
-    pub async fn send_email(&self, recipient: SubscriberEmail, subject: &str, html_content: &str, text_content: &str) -> Result<(), reqwest::Error> {
+    pub async fn send_email(
+        &self,
+        recipient: SubscriberEmail,
+        subject: &str,
+        html_content: &str,
+        text_content: &str,
+    ) -> Result<(), reqwest::Error> {
         let url = format!("{}/email", self.base_url);
         let send_email_request = SendEmailRequest {
             from: self.sender.as_ref(),
@@ -34,7 +45,9 @@ impl EmailClient {
             .post(&url)
             .json(&send_email_request)
             .header("X-Postmark-Server-Token", self.auth_token.expose_secret())
-            .send().await?;
+            .send()
+            .await?
+            .error_for_status()?;
 
         Ok(())
     }
@@ -52,14 +65,15 @@ struct SendEmailRequest<'a> {
 
 #[cfg(test)]
 mod email_client_tests {
-    use fake::{Fake, Faker};
-    use fake::faker::internet::en::SafeEmail;
-    use fake::faker::lorem::en::{Paragraph, Sentence};
-    use secrecy::Secret;
-    use wiremock::{Match, Mock, MockServer, Request, ResponseTemplate};
-    use wiremock::matchers::{header, header_exists, method, path};
     use crate::domain::SubscriberEmail;
     use crate::email_client::EmailClient;
+    use claims::{assert_err, assert_err_eq, assert_ok};
+    use fake::faker::internet::en::SafeEmail;
+    use fake::faker::lorem::en::{Paragraph, Sentence};
+    use fake::{Fake, Faker};
+    use secrecy::Secret;
+    use wiremock::matchers::{any, header, header_exists, method, path};
+    use wiremock::{Match, Mock, MockServer, Request, ResponseTemplate};
 
     struct SendEmailRequesstMatcher;
 
@@ -82,10 +96,12 @@ mod email_client_tests {
     async fn should_send_email() {
         // Arrange
         let server = MockServer::start().await;
-        let sender = SubscriberEmail::parse(SafeEmail().fake()).expect("failed to get the fake sender email");
+        let sender = SubscriberEmail::parse(SafeEmail().fake())
+            .expect("failed to get the fake sender email");
         let email_client = EmailClient::new(server.uri(), sender, Secret::new(Faker.fake()));
 
-        let subscriber_email = SubscriberEmail::parse(SafeEmail().fake()).expect("failed to get the fake sender email");
+        let subscriber_email = SubscriberEmail::parse(SafeEmail().fake())
+            .expect("failed to get the fake sender email");
         let subject: String = Sentence(1..2).fake();
         let content: String = Paragraph(1..9).fake();
 
@@ -100,8 +116,67 @@ mod email_client_tests {
             .await;
 
         // Act
-        let _ = email_client.send_email(subscriber_email, &subject, &content, &content).await;
+        let response = email_client
+            .send_email(subscriber_email, &subject, &content, &content)
+            .await;
 
         // Assert
+        assert_ok!(response);
+    }
+
+    #[tokio::test]
+    async fn should_return_http_status_code_500() {
+        // Arrange
+        let server = MockServer::start().await;
+        let sender = SubscriberEmail::parse(SafeEmail().fake())
+            .expect("failed to get the fake sender email");
+        let email_client = EmailClient::new(server.uri(), sender, Secret::new(Faker.fake()));
+
+        let subscriber_email = SubscriberEmail::parse(SafeEmail().fake())
+            .expect("failed to get the fake sender email");
+        let subject: String = Sentence(1..2).fake();
+        let content: String = Paragraph(1..9).fake();
+
+        Mock::given(any())
+            .respond_with(ResponseTemplate::new(500))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        // Act
+        let response = email_client
+            .send_email(subscriber_email, &subject, &content, &content)
+            .await;
+
+        // Assert
+        assert_err!(response);
+    }
+
+    #[tokio::test]
+    async fn should_time_out_if_server_takes_long_time_to_respond() {
+        // Arrange
+        let server = MockServer::start().await;
+        let sender = SubscriberEmail::parse(SafeEmail().fake())
+            .expect("failed to get the fake sender email");
+        let email_client = EmailClient::new(server.uri(), sender, Secret::new(Faker.fake()));
+
+        let subscriber_email = SubscriberEmail::parse(SafeEmail().fake())
+            .expect("failed to get the fake sender email");
+        let subject: String = Sentence(1..2).fake();
+        let content: String = Paragraph(1..9).fake();
+
+        Mock::given(any())
+            .respond_with(ResponseTemplate::new(200).set_delay(std::time::Duration::from_secs(20)))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        // Act
+        let response = email_client
+            .send_email(subscriber_email, &subject, &content, &content)
+            .await;
+
+        // Assert
+        assert_err!(response);
     }
 }
