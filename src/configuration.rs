@@ -12,7 +12,8 @@ pub struct Settings {
 #[derive(serde::Deserialize)]
 pub struct EmailClientSettings {
     pub sender: String,
-    pub base_url: String
+    pub base_url: String,
+    pub auth_token: Secret<String>
 }
 
 impl EmailClientSettings {

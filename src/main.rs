@@ -24,6 +24,6 @@ async fn main() -> Result<(), std::io::Error> {
         .expect("failed to connect to database");
 
     let sender_email = settings.email_client_settings.sender_email().expect("Invalid subscription email sender address");
-    let email_client = EmailClient::new(settings.email_client_settings.base_url, sender_email);
+    let email_client = EmailClient::new(settings.email_client_settings.base_url, sender_email, settings.email_client_settings.auth_token);
     run(listener, connection, email_client)?.await
 }
