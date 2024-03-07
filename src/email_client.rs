@@ -36,9 +36,9 @@ impl EmailClient {
         let send_email_request = SendEmailRequest {
             from: self.sender.as_ref(),
             to: recipient.as_ref(),
-            subject: subject.as_ref(),
-            html_content: html_content.as_ref(),
-            text_content: text_content.as_ref(),
+            subject,
+            html_content,
+            text_content,
         };
 
         self.http_client
@@ -67,7 +67,7 @@ struct SendEmailRequest<'a> {
 mod email_client_tests {
     use crate::domain::SubscriberEmail;
     use crate::email_client::EmailClient;
-    use claims::{assert_err, assert_err_eq, assert_ok};
+    use claims::{assert_err, assert_ok};
     use fake::faker::internet::en::SafeEmail;
     use fake::faker::lorem::en::{Paragraph, Sentence};
     use fake::{Fake, Faker};

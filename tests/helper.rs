@@ -1,14 +1,12 @@
-use std::{io::sink, net::TcpListener};
-
-use newsletter_api::email_client::EmailClient;
+use newsletter_api::configuration::DatabaseSettings;
+use newsletter_api::startup::{get_connection_pool, Application};
 use newsletter_api::{
-    configuration::{get_configuration, DatabaseSettings},
-    startup::run,
+    configuration::get_configuration,
     telemetry::{get_tracing_subscriber, init_tracing_subscriber},
 };
 use once_cell::sync::Lazy;
-use secrecy::ExposeSecret;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
+use std::io::sink;
 use uuid::Uuid;
 
 pub struct TestApp {
@@ -19,37 +17,30 @@ pub struct TestApp {
 pub async fn spawn_app() -> TestApp {
     Lazy::force(&TRACING);
 
-    let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind to server");
-    let port = listener.local_addr().unwrap().port();
-    println!("port {port}");
+    let settings = {
+        let mut s = get_configuration().expect("Failed to get settings");
+        s.database.database_name = Uuid::new_v4().to_string();
+        s.application_port = 0;
+        s
+    };
 
-    let mut settings = get_configuration().expect("Failed to get settings");
-    settings.database.database_name = Uuid::new_v4().to_string();
-    let connection_pool = configure_database(&settings.database).await;
-    let sender_email = settings
-        .email_client_settings
-        .sender_email()
-        .expect("failed to parse the email id");
-    let email_client = EmailClient::new(
-        settings.email_client_settings.base_url,
-        sender_email,
-        settings.email_client_settings.auth_token,
-    );
-    let server =
-        run(listener, connection_pool.clone(), email_client).expect("Failed to spin the sever");
-    let _ = tokio::spawn(server);
+    configure_database(&settings.database).await;
 
+    let application = Application::build(settings.clone())
+        .await
+        .expect("Failed to spin the server");
+    let address = format!("http://127.0.0.1:{}", application.port());
+    let _ = tokio::spawn(application.run_until_stoped());
     TestApp {
-        address: format!("http://127.0.0.1:{}", port),
-        db_pool: connection_pool,
+        address,
+        db_pool: get_connection_pool(&settings),
     }
 }
 
-async fn configure_database(database: &DatabaseSettings) -> sqlx::Pool<sqlx::Postgres> {
-    let mut connection =
-        PgConnection::connect(&database.connection_string_without_db().expose_secret())
-            .await
-            .expect("Failed to connect to database");
+async fn configure_database(database: &DatabaseSettings) {
+    let mut connection = PgConnection::connect_with(&database.without_db())
+        .await
+        .expect("Failed to connect to database");
 
     connection
         .execute(format!(r#"CREATE DATABASE "{}";"#, database.database_name).as_str())
@@ -59,7 +50,7 @@ async fn configure_database(database: &DatabaseSettings) -> sqlx::Pool<sqlx::Pos
             &database.database_name
         ));
 
-    let connection_pool = PgPool::connect(&database.connection_string().expose_secret())
+    let connection_pool = PgPool::connect_with(database.with_db())
         .await
         .expect("Failed to connect to the database");
 
@@ -67,8 +58,6 @@ async fn configure_database(database: &DatabaseSettings) -> sqlx::Pool<sqlx::Pos
         .run(&connection_pool)
         .await
         .expect("Failed to run migrate");
-
-    connection_pool
 }
 
 static TRACING: Lazy<()> = Lazy::new(|| {
