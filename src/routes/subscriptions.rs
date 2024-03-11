@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 use crate::domain::SubscriberEmail;
 use crate::domain::{NewSubscriber, SubscriberName};
+use crate::email_client::EmailClient;
 
 #[derive(serde::Deserialize)]
 pub struct FormData {
@@ -14,7 +15,7 @@ pub struct FormData {
 
 #[tracing::instrument(
 name = "Adding new subscriber",
-skip(form_data, connection),
+skip(form_data, connection, email_client),
 fields(
 subscriber_email = % form_data.email,
 subscriber_name = % form_data.name
@@ -23,6 +24,7 @@ subscriber_name = % form_data.name
 pub async fn subscribe(
     form_data: web::Form<FormData>,
     connection: web::Data<PgPool>,
+    email_client: web::Data<EmailClient>,
 ) -> HttpResponse {
     let new_subscriber = match form_data.0.try_into() {
         Ok(data) => data,
@@ -33,6 +35,18 @@ pub async fn subscribe(
         Ok(_) => HttpResponse::Ok().finish(),
         Err(_) => HttpResponse::InternalServerError().finish(),
     }
+
+    if email_client.send_email(new_subscriber.email,
+                            "Welcome!",
+                            "Welcome to our Newsletter!",
+                            "Welcome to our Newsletter!")
+        .await
+        .is_err()
+    {
+        return HttpResponse::InternalServerError().finish();
+    }
+
+    HttpResponse::Ok().finish()
 }
 
 async fn create_subscriber(
@@ -47,12 +61,12 @@ async fn create_subscriber(
         new_subscriber.name.as_ref(),
         Utc::now()
     )
-    .execute(connection_pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("failed to execute query: {:?}", e);
-        e
-    })?;
+        .execute(connection_pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("failed to execute query: {:?}", e);
+            e
+        })?;
 
     Ok(())
 }
