@@ -47,12 +47,12 @@ async fn create_subscriber(
         new_subscriber.name.as_ref(),
         Utc::now()
     )
-        .execute(connection_pool)
-        .await
-        .map_err(|e| {
-            tracing::error!("failed to execute query: {:?}", e);
-            e
-        })?;
+    .execute(connection_pool)
+    .await
+    .map_err(|e| {
+        tracing::error!("failed to execute query: {:?}", e);
+        e
+    })?;
 
     Ok(())
 }
