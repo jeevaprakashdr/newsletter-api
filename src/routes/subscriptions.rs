@@ -34,17 +34,7 @@ pub async fn subscribe(
     match create_subscriber(&new_subscriber, &connection).await {
         Ok(_) => HttpResponse::Ok().finish(),
         Err(_) => HttpResponse::InternalServerError().finish(),
-    }
-
-    if email_client.send_email(new_subscriber.email,
-                            "Welcome!",
-                            "Welcome to our Newsletter!",
-                            "Welcome to our Newsletter!")
-        .await
-        .is_err()
-    {
-        return HttpResponse::InternalServerError().finish();
-    }
+    };
 
     HttpResponse::Ok().finish()
 }

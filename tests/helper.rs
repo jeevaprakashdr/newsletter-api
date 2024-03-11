@@ -7,6 +7,7 @@ use newsletter_api::{
 use once_cell::sync::Lazy;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use std::io::sink;
+use reqwest::{Error, Response};
 use uuid::Uuid;
 use wiremock::MockServer;
 
@@ -14,6 +15,18 @@ pub struct TestApp {
     pub address: String,
     pub db_pool: PgPool,
     pub email_server: MockServer,
+}
+
+impl TestApp {
+    pub async fn post_subscription(&self, body: String) -> Result<Response, Error>
+    {
+        reqwest::Client::new()
+            .post(format!("{}/subscriptions", self.address))
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .body(body)
+            .send()
+            .await
+    }
 }
 
 pub async fn spawn_app() -> TestApp {
