@@ -13,12 +13,12 @@ pub struct FormData {
 }
 
 #[tracing::instrument(
-    name = "Adding new subscriber",
-    skip(form_data, connection),
-    fields(
-        subscriber_email = %form_data.email,
-        subscriber_name = %form_data.name
-    )
+name = "Adding new subscriber",
+skip(form_data, connection),
+fields(
+subscriber_email = % form_data.email,
+subscriber_name = % form_data.name
+)
 )]
 pub async fn subscribe(
     form_data: web::Form<FormData>,
@@ -40,18 +40,19 @@ async fn create_subscriber(
     connection_pool: &PgPool,
 ) -> Result<(), sqlx::Error> {
     sqlx::query!(
-        r#"INSERT INTO subscriptions(id, email, name, subscribed_at) VALUES($1, $2, $3, $4)"#,
+        r#"INSERT INTO subscriptions(id, email, name, subscribed_at, status)
+        VALUES($1, $2, $3, $4,'confirmed')"#,
         Uuid::new_v4(),
         new_subscriber.email.as_ref(),
         new_subscriber.name.as_ref(),
         Utc::now()
     )
-    .execute(connection_pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("failed to execute query: {:?}", e);
-        e
-    })?;
+        .execute(connection_pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("failed to execute query: {:?}", e);
+            e
+        })?;
 
     Ok(())
 }
