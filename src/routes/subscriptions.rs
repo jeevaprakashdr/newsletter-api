@@ -60,7 +60,7 @@ async fn create_subscriber(
 ) -> Result<(), sqlx::Error> {
     sqlx::query!(
         r#"INSERT INTO subscriptions(id, email, name, subscribed_at, status)
-        VALUES($1, $2, $3, $4,'confirmed')"#,
+        VALUES($1, $2, $3, $4,'pending-confirmation')"#,
         Uuid::new_v4(),
         new_subscriber.email.as_ref(),
         new_subscriber.name.as_ref(),

@@ -72,3 +72,34 @@ async fn subscribe_sends_a_confirmation_email_for_valid_request() {
     // Assert
     // Mock asserts sending of email on Drop
 }
+
+#[tokio::test]
+async fn subscribe_persist_valid_form_data() {
+    let app = spawn_app().await;
+    let body = "name=jk&email=newsletter-api%40gmail.com";
+
+    Mock::given(path("/email"))
+        .and(method("POST"))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .mount(&app.email_server)
+        .await;
+
+    // Act
+    let _ = app
+        .post_subscription(body.into())
+        .await
+        .expect("Failed to execute request");
+
+    // Assert
+    let saved = sqlx::query!("SELECT email, name, status FROM subscriptions",)
+        .fetch_one(&app.db_pool)
+        .await
+        .expect("Failed to fetch saved subscription");
+
+    // Assert
+    assert_eq!(saved.name, "jk");
+    assert_eq!(saved.email, "newsletter-api@gmail.com");
+    assert_eq!(saved.status, "pending-confirmation")
+
+}
