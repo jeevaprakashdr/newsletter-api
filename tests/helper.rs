@@ -5,9 +5,9 @@ use newsletter_api::{
     telemetry::{get_tracing_subscriber, init_tracing_subscriber},
 };
 use once_cell::sync::Lazy;
+use reqwest::{Error, Response};
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use std::io::sink;
-use reqwest::{Error, Response};
 use uuid::Uuid;
 use wiremock::MockServer;
 
@@ -18,8 +18,7 @@ pub struct TestApp {
 }
 
 impl TestApp {
-    pub async fn post_subscription(&self, body: String) -> Result<Response, Error>
-    {
+    pub async fn post_subscription(&self, body: String) -> Result<Response, Error> {
         reqwest::Client::new()
             .post(format!("{}/subscriptions", self.address))
             .header("Content-Type", "application/x-www-form-urlencoded")
@@ -31,11 +30,12 @@ impl TestApp {
 
 pub async fn spawn_app() -> TestApp {
     Lazy::force(&TRACING);
-
+    let email_server = MockServer::start().await;
     let settings = {
         let mut s = get_configuration().expect("Failed to get settings");
         s.database.database_name = Uuid::new_v4().to_string();
         s.application_port = 0;
+        s.email_client_settings.base_url = email_server.uri();
         s
     };
 
@@ -49,7 +49,7 @@ pub async fn spawn_app() -> TestApp {
     TestApp {
         address,
         db_pool: get_connection_pool(&settings),
-        email_server: MockServer::start().await,
+        email_server,
     }
 }
 

@@ -31,10 +31,25 @@ pub async fn subscribe(
         Err(_) => return HttpResponse::InternalServerError().finish(),
     };
 
-    match create_subscriber(&new_subscriber, &connection).await {
-        Ok(_) => HttpResponse::Ok().finish(),
-        Err(_) => HttpResponse::InternalServerError().finish(),
-    };
+    if create_subscriber(&new_subscriber, &connection)
+        .await
+        .is_err()
+    {
+        return HttpResponse::InternalServerError().finish();
+    }
+
+    if email_client
+        .send_email(
+            new_subscriber.email,
+            "Welcome",
+            "Welcome to newsletter subscription!",
+            "Welcome to newsletter subscription!",
+        )
+        .await
+        .is_err()
+    {
+        return HttpResponse::InternalServerError().finish();
+    }
 
     HttpResponse::Ok().finish()
 }
@@ -51,12 +66,12 @@ async fn create_subscriber(
         new_subscriber.name.as_ref(),
         Utc::now()
     )
-        .execute(connection_pool)
-        .await
-        .map_err(|e| {
-            tracing::error!("failed to execute query: {:?}", e);
-            e
-        })?;
+    .execute(connection_pool)
+    .await
+    .map_err(|e| {
+        tracing::error!("failed to execute query: {:?}", e);
+        e
+    })?;
 
     Ok(())
 }
