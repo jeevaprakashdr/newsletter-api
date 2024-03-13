@@ -95,8 +95,7 @@ async fn subscribe_sends_a_confirmation_email_for_valid_request() {
         .await;
 
     // Act
-    app
-        .post_subscription(body.into())
+    app.post_subscription(body.into())
         .await
         .expect("Failed to execute request");
 
@@ -116,15 +115,13 @@ async fn subscribe_sends_a_confirmation_email_with_link() {
         .await;
 
     // Act
-    app
-        .post_subscription(body.into())
+    app.post_subscription(body.into())
         .await
         .expect("Failed to execute request");
 
     // Assert
     let email_request = &app.email_server.received_requests().await.unwrap()[0];
-    let email_body: serde_json::Value = serde_json::from_slice(&email_request.body)
-        .unwrap();
+    let email_body: serde_json::Value = serde_json::from_slice(&email_request.body).unwrap();
 
     let get_link = |s: &str| {
         let links: Vec<_> = linkify::LinkFinder::new()
