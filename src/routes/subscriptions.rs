@@ -1,5 +1,6 @@
 use actix_web::{web, HttpResponse};
 use chrono::Utc;
+use reqwest::Error;
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -38,8 +39,26 @@ pub async fn subscribe(
         return HttpResponse::InternalServerError().finish();
     }
 
+    if send_confirmation_email(&email_client, new_subscriber)
+        .await
+        .is_err()
+    {
+        return HttpResponse::InternalServerError().finish();
+    }
+
+    HttpResponse::Ok().finish()
+}
+
+#[tracing::instrument(
+    name = "sending confirmation email ",
+    skip(email_client, new_subscriber)
+)]
+async fn send_confirmation_email(
+    email_client: &EmailClient,
+    new_subscriber: NewSubscriber,
+) -> Result<(), Error> {
     let confirmation_link = "https://newletter-api.com/confirmation/confirm";
-    if email_client
+    email_client
         .send_email(
             new_subscriber.email,
             "Welcome",
@@ -53,14 +72,9 @@ pub async fn subscribe(
             ),
         )
         .await
-        .is_err()
-    {
-        return HttpResponse::InternalServerError().finish();
-    }
-
-    HttpResponse::Ok().finish()
 }
 
+#[tracing::instrument(name = "create subscriber", skip(new_subscriber, connection_pool))]
 async fn create_subscriber(
     new_subscriber: &NewSubscriber,
     connection_pool: &PgPool,
